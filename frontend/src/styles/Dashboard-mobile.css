@@ -110,53 +110,54 @@
     background: var(--surface-hover);
   }
   
-  /* Mobile responsive styles */
+  /* ===== Mobile-only dashboard flattening & tabs layout ===== */
   @media (max-width: 768px) {
-    .welcome-text-desktop {
-      display: none;
+    .welcome-text-desktop { display: none; }
+  
+    .desktop-only { display: none !important; }
+    .mobile-only  { display: block !important; }
+  
+    /* Keep slight padding only in the header so icons/hamburger don't hit edges */
+    .topbar-content,
+    .topbar-content-compact {
+      padding: 0 15px;
     }
   
-    .desktop-only {
-      display: none !important;
-    }
-  
-    .mobile-only {
-      display: block;
-    }
-  
-    .brand-text-compact h1 {
-      font-size: 1.1rem;
-    }
-  
-    .topbar-compact {
-      padding: 0.5rem 0;
-    }
-  
-    /* Make tabs more compact on mobile */
+    /* Make tabs full-bleed and flat on mobile */
     .tabs {
-      padding: 0.5rem;
-      gap: 0.25rem;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      padding: 0;
+      margin: 0;
     }
   
+    /* Tabs: icon + label side-by-side, no pill corners */
     .tab {
       flex-direction: row;
-      gap: 0.25rem;
-      padding: 0.5rem;
-      font-size: 0.8rem;
+      gap: 0.4rem;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem;
+      border-radius: 0;
+    }
+  
+    .tab.active {
+      box-shadow: none;
+      border-radius: 0;
     }
   
     .tab-label {
+      display: inline !important;
       font-size: 0.9rem;
       line-height: 1;
     }
-
-    .brand-mark {
-      font-size: 1.25rem;
-    }
   
-    .brand-text-compact h1 {
-      font-size: 1rem;
-    }
-
+    .brand-text-compact h1 { font-size: 1.4rem; }
+    .topbar-compact { padding: 0.5rem 0; }
+  
+    .tabs { gap: 0.25rem; }
+    .brand-mark { font-size: 1.25rem; }
   }
   

@@ -193,7 +193,7 @@
   padding: 0.5rem;
   display: flex;
   gap: 0.5rem;
-  margin: 2rem 0;
+  margin: 1.25rem 0;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border);
 }
@@ -242,7 +242,7 @@
 }
 
 .dashboard .container {
-  padding-bottom: 2rem;
+  padding-bottom: 0.5rem;
 }
 
 /* Responsive Dashboard */
@@ -593,15 +593,9 @@
 }
 
 @keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.02);
-  }
-  100% {
-    transform: scale(1);
-  }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
 }
 
 /* Responsive Countdown */
