@@ -1,77 +1,126 @@
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash, faPen, faCheck, faXmark, faLink } from '@fortawesome/free-solid-svg-icons';
+import { 
+  faTrash, 
+  faPen, 
+  faCheck, 
+  faXmark, 
+  faExternalLinkAlt,
+  faStickyNote
+} from '@fortawesome/free-solid-svg-icons';
 
 const WishlistItem = ({ item, onUpdate, onDelete, isEditable = true }) => {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(item);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState(item);
 
-  const save = () => {
-    onUpdate(draft);
-    setEditing(false);
+  const handleSave = () => {
+    if (!editForm.title.trim()) return;
+    onUpdate(editForm);
+    setIsEditing(false);
   };
 
-  const cancel = () => {
-    setDraft(item);
-    setEditing(false);
+  const handleCancel = () => {
+    setEditForm(item);
+    setIsEditing(false);
   };
 
-  return (
-    <div className="wish-item">
-      {editing ? (
-        <div className="wish-edit">
-          <input
-            className="input"
-            placeholder="Title"
-            value={draft.title}
-            onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-          />
-          <input
-            className="input"
-            placeholder="Link (optional)"
-            value={draft.link || ''}
-            onChange={(e) => setDraft({ ...draft, link: e.target.value })}
-          />
-          <textarea
-            className="textarea"
-            placeholder="Notes (size, colour, etc.)"
-            value={draft.notes || ''}
-            onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-          />
-          <div className="row gap">
-            <button className="btn primary" onClick={save}>
-              <FontAwesomeIcon icon={faCheck} /> Save
+  const handleEdit = () => {
+    setEditForm(item);
+    setIsEditing(true);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="wishlist-item editing">
+        <div className="edit-form">
+          <div className="form-row">
+            <input
+              className="form-input"
+              placeholder="Item title"
+              value={editForm.title}
+              onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+              autoFocus
+            />
+          </div>
+          
+          <div className="form-row">
+            <input
+              className="form-input"
+              placeholder="Link (optional)"
+              type="url"
+              value={editForm.link || ''}
+              onChange={(e) => setEditForm({ ...editForm, link: e.target.value })}
+            />
+          </div>
+          
+          <div className="form-row">
+            <textarea
+              className="form-input textarea"
+              placeholder="Notes (size, color, preferences...)"
+              value={editForm.notes || ''}
+              onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+              rows="3"
+            />
+          </div>
+          
+          <div className="item-actions">
+            <button 
+              className="btn btn-primary btn-sm" 
+              onClick={handleSave}
+              disabled={!editForm.title.trim()}
+            >
+              <FontAwesomeIcon icon={faCheck} />
+              Save
             </button>
-            <button className="btn ghost" onClick={cancel}>
-              <FontAwesomeIcon icon={faXmark} /> Cancel
+            <button className="btn btn-ghost btn-sm" onClick={handleCancel}>
+              <FontAwesomeIcon icon={faXmark} />
+              Cancel
             </button>
           </div>
         </div>
-      ) : (
-        <div className="wish-view">
-          <div className="wish-title">{item.title}</div>
-          {item.link ? (
-            <a className="wish-link" href={item.link} target="_blank" rel="noreferrer">
-              <FontAwesomeIcon icon={faLink} /> View link
-            </a>
-          ) : null}
-          {item.notes ? <div className="wish-notes">{item.notes}</div> : null}
+      </div>
+    );
+  }
 
-          {isEditable && (
-            <div className="wish-actions">
-              <button className="icon-btn" title="Edit" onClick={() => setEditing(true)}>
-                <FontAwesomeIcon icon={faPen} />
-              </button>
-              <button className="icon-btn danger" title="Delete" onClick={onDelete}>
-                <FontAwesomeIcon icon={faTrash} />
-              </button>
-            </div>
+  return (
+    <div className="wishlist-item">
+      <div className="item-content">
+        <div className="item-header">
+          <h4 className="item-title">{item.title}</h4>
+          {item.link && (
+            <a 
+              href={item.link} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="item-link"
+              title="View link"
+            >
+              <FontAwesomeIcon icon={faExternalLinkAlt} />
+              <span>Link</span>
+            </a>
           )}
         </div>
-      )}
+        
+        {item.notes && (
+          <div className="item-notes">
+            <FontAwesomeIcon icon={faStickyNote} className="notes-icon" />
+            <span>{item.notes}</span>
+          </div>
+        )}
+        
+        {isEditable && (
+          <div className="item-actions">
+            <button className="icon-btn" onClick={handleEdit} title="Edit item">
+              <FontAwesomeIcon icon={faPen} />
+            </button>
+            <button className="icon-btn danger" onClick={onDelete} title="Delete item">
+              <FontAwesomeIcon icon={faTrash} />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 export default WishlistItem;
-
