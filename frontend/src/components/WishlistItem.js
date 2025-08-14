@@ -6,7 +6,8 @@ import {
   faCheck, 
   faXmark, 
   faExternalLinkAlt,
-  faStickyNote
+  faStickyNote,
+  faEuroSign
 } from '@fortawesome/free-solid-svg-icons';
 
 const WishlistItem = ({ item, onUpdate, onDelete, isEditable = true }) => {
@@ -14,7 +15,7 @@ const WishlistItem = ({ item, onUpdate, onDelete, isEditable = true }) => {
   const [editForm, setEditForm] = useState(item);
 
   const handleSave = () => {
-    if (!editForm.title.trim()) return;
+    if (!editForm.title.trim() || !editForm.link.trim() || !editForm.price) return;
     onUpdate(editForm);
     setIsEditing(false);
   };
@@ -29,6 +30,11 @@ const WishlistItem = ({ item, onUpdate, onDelete, isEditable = true }) => {
     setIsEditing(true);
   };
 
+  const formatPrice = (price) => {
+    const num = parseFloat(price);
+    return isNaN(num) ? '€0.00' : `€${num.toFixed(2)}`;
+  };
+
   if (isEditing) {
     return (
       <div className="wishlist-item editing">
@@ -40,17 +46,46 @@ const WishlistItem = ({ item, onUpdate, onDelete, isEditable = true }) => {
               value={editForm.title}
               onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
               autoFocus
+              required
             />
           </div>
           
           <div className="form-row">
             <input
               className="form-input"
-              placeholder="Link (optional)"
+              placeholder="Link to product"
               type="url"
               value={editForm.link || ''}
               onChange={(e) => setEditForm({ ...editForm, link: e.target.value })}
+              required
             />
+          </div>
+
+          <div className="form-row">
+            <div className="price-input-container" style={{ position: 'relative' }}>
+              <FontAwesomeIcon 
+                icon={faEuroSign} 
+                style={{ 
+                  position: 'absolute', 
+                  left: '12px', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)', 
+                  color: 'var(--text-muted)',
+                  fontSize: '0.9rem'
+                }} 
+              />
+              <input
+                className="form-input"
+                placeholder="Price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={editForm.price || ''}
+                onChange={(e) => setEditForm({ ...editForm, price: parseFloat(e.target.value) || 0 })}
+                style={{ paddingLeft: '32px' }}
+                required
+              />
+            </div>
           </div>
           
           <div className="form-row">
@@ -67,7 +102,7 @@ const WishlistItem = ({ item, onUpdate, onDelete, isEditable = true }) => {
             <button 
               className="btn btn-primary btn-sm" 
               onClick={handleSave}
-              disabled={!editForm.title.trim()}
+              disabled={!editForm.title.trim() || !editForm.link.trim() || !editForm.price}
             >
               <FontAwesomeIcon icon={faCheck} />
               Save
@@ -86,7 +121,17 @@ const WishlistItem = ({ item, onUpdate, onDelete, isEditable = true }) => {
     <div className="wishlist-item">
       <div className="item-content">
         <div className="item-header">
-          <h4 className="item-title">{item.title}</h4>
+          <div style={{ flex: 1 }}>
+            <h4 className="item-title">{item.title}</h4>
+            <div className="item-price" style={{ 
+              color: 'var(--primary)', 
+              fontWeight: '600', 
+              fontSize: '1.1rem',
+              marginTop: '0.25rem'
+            }}>
+              {formatPrice(item.price)}
+            </div>
+          </div>
           {item.link && (
             <a 
               href={item.link} 

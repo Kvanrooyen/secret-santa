@@ -10,8 +10,11 @@ import {
   faClock, 
   faLock,
   faUserSecret,
-  faHourglassHalf
+  faHourglassHalf,
+  faBars,
+  faTimes
 } from '@fortawesome/free-solid-svg-icons';
+import '../styles/Dashboard-mobile.css';
 
 const loadAssignments = () => {
   try {
@@ -40,6 +43,7 @@ const ensureAssignments = (members) => {
 
 const Dashboard = ({ currentUser, onSignOut }) => {
   const [activeTab, setActiveTab] = useState('mine');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const assignments = useMemo(() => ensureAssignments(FAMILY_MEMBERS), []);
   const assignedUserId = IS_DRAW_COMPLETE ? assignments[currentUser.id] : null;
@@ -50,26 +54,60 @@ const Dashboard = ({ currentUser, onSignOut }) => {
     onSignOut();
   };
 
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+  };
+
   return (
     <div className="dashboard">
-      <header className="topbar">
+      <header className="topbar-compact">
         <div className="container">
-          <div className="topbar-content">
-            <div className="brand">
+          <div className="topbar-content-compact">
+            <div className="brand-compact">
               <div className="brand-mark">🎄</div>
-              <div className="brand-text">
+              <div className="brand-text-compact">
                 <h1>Secret Santa</h1>
-                <p>Family Gift Exchange</p>
               </div>
             </div>
-            <div className="user-section">
-              <span className="welcome-text">Welcome back, {currentUser.name}!</span>
-              <button className="btn btn-ghost" onClick={handleSignOut}>
+            
+            <div className="header-actions">
+              {/* Desktop welcome text and sign out */}
+              <span className="welcome-text-desktop">Welcome, {currentUser.name}</span>
+              <button className="btn btn-ghost desktop-only" onClick={handleSignOut}>
                 <FontAwesomeIcon icon={faSignOutAlt} />
                 Sign Out
               </button>
+              
+              {/* Mobile hamburger menu */}
+              <button 
+                className="menu-toggle mobile-only" 
+                onClick={toggleMenu}
+                aria-label="Toggle menu"
+              >
+                <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars} />
+              </button>
             </div>
           </div>
+
+          {/* Mobile dropdown menu */}
+          {isMenuOpen && (
+            <>
+              <div className="menu-overlay" onClick={closeMenu}></div>
+              <div className="mobile-menu">
+                <div className="mobile-menu-header">
+                  <span>Welcome, {currentUser.name}!</span>
+                </div>
+                <button className="mobile-menu-item" onClick={handleSignOut}>
+                  <FontAwesomeIcon icon={faSignOutAlt} />
+                  Sign Out
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </header>
 
@@ -80,7 +118,7 @@ const Dashboard = ({ currentUser, onSignOut }) => {
             onClick={() => setActiveTab('mine')}
           >
             <FontAwesomeIcon icon={faList} />
-            My Wishlist
+            <span className="tab-label">My Wishlist</span>
           </button>
           <button
             className={`tab ${activeTab === 'assigned' ? 'active' : ''}`}
@@ -88,14 +126,14 @@ const Dashboard = ({ currentUser, onSignOut }) => {
             disabled={!IS_DRAW_COMPLETE}
           >
             <FontAwesomeIcon icon={IS_DRAW_COMPLETE ? faGift : faLock} />
-            {IS_DRAW_COMPLETE ? 'Secret Assignment' : 'Locked until Draw'}
+            <span className="tab-label">{IS_DRAW_COMPLETE ? 'Assignment' : 'Locked'}</span>
           </button>
           <button
             className={`tab ${activeTab === 'countdowns' ? 'active' : ''}`}
             onClick={() => setActiveTab('countdowns')}
           >
             <FontAwesomeIcon icon={faClock} />
-            Countdowns
+            <span className="tab-label">Countdowns</span>
           </button>
         </nav>
 
@@ -170,6 +208,8 @@ const Dashboard = ({ currentUser, onSignOut }) => {
           )}
         </div>
       </main>
+
+
     </div>
   );
 };

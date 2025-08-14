@@ -89,8 +89,7 @@ const LandingPage = ({ onAuthenticate }) => {
           </div>
           <div className="privacy-text">
             <strong>100% Private & Secure</strong><br/>
-            No passwords needed! We'll send you a secure magic link that works once and expires quickly. 
-            Your wishlists and secret assignments are encrypted and only visible to family members.
+            Your wishlists and secret assignments are encrypted and only visible to you!
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import WishlistItem from './WishlistItem';
 import { LS_KEYS } from '../constants';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faListCheck, faGift } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faListCheck, faGift, faEuroSign } from '@fortawesome/free-solid-svg-icons';
 
 const loadAllWishlists = () => {
   try {
@@ -23,6 +23,7 @@ const WishlistSection = ({ userId, isOwner = true }) => {
   const [newItem, setNewItem] = useState({
     title: '',
     link: '',
+    price: '',
     notes: ''
   });
 
@@ -33,10 +34,11 @@ const WishlistSection = ({ userId, isOwner = true }) => {
   }, [allWishlists]);
 
   const addItem = () => {
-    if (!newItem.title.trim()) return;
+    if (!newItem.title.trim() || !newItem.link.trim() || !newItem.price) return;
 
     const item = {
       ...newItem,
+      price: parseFloat(newItem.price) || 0,
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString()
     };
@@ -47,7 +49,7 @@ const WishlistSection = ({ userId, isOwner = true }) => {
     }));
 
     // Reset form
-    setNewItem({ title: '', link: '', notes: '' });
+    setNewItem({ title: '', link: '', price: '', notes: '' });
     setIsFormExpanded(false);
   };
 
@@ -70,6 +72,15 @@ const WishlistSection = ({ userId, isOwner = true }) => {
   const handleFormSubmit = (e) => {
     e.preventDefault();
     addItem();
+  };
+
+  const calculateTotal = () => {
+    return items.reduce((total, item) => total + (parseFloat(item.price) || 0), 0);
+  };
+
+  const formatPrice = (price) => {
+    const num = parseFloat(price);
+    return isNaN(num) ? '€0.00' : `€${num.toFixed(2)}`;
   };
 
   return (
@@ -105,46 +116,73 @@ const WishlistSection = ({ userId, isOwner = true }) => {
               />
             </div>
 
-            {(isFormExpanded || newItem.link || newItem.notes) && (
-              <>
-                <div className="form-row">
-                  <input
-                    className="form-input"
-                    placeholder="Link to product (optional)"
-                    type="url"
-                    value={newItem.link}
-                    onChange={(e) => setNewItem({ ...newItem, link: e.target.value })}
-                  />
-                </div>
-                <div className="form-row">
-                  <textarea
-                    className="form-input textarea"
-                    placeholder="Additional notes (size, color, specific brand, where to find it...)"
-                    value={newItem.notes}
-                    onChange={(e) => setNewItem({ ...newItem, notes: e.target.value })}
-                    rows="3"
-                  />
-                </div>
-              </>
+            <div className="form-row">
+              <input
+                className="form-input"
+                placeholder="Link to product"
+                type="url"
+                value={newItem.link}
+                onChange={(e) => setNewItem({ ...newItem, link: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-row">
+              <div className="price-input-container" style={{ position: 'relative' }}>
+                <FontAwesomeIcon 
+                  icon={faEuroSign} 
+                  style={{ 
+                    position: 'absolute', 
+                    left: '12px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    color: 'var(--text-muted)',
+                    fontSize: '0.9rem'
+                  }} 
+                />
+                <input
+                  className="form-input"
+                  placeholder="Price in euros"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newItem.price}
+                  onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+                  style={{ paddingLeft: '32px' }}
+                  required
+                />
+              </div>
+            </div>
+
+            {(isFormExpanded || newItem.notes) && (
+              <div className="form-row">
+                <textarea
+                  className="form-input textarea"
+                  placeholder="Additional notes (size, color, specific brand, where to find it...)"
+                  value={newItem.notes}
+                  onChange={(e) => setNewItem({ ...newItem, notes: e.target.value })}
+                  rows="3"
+                />
+              </div>
             )}
 
             <div className="form-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <button 
                 type="submit"
                 className="btn btn-primary" 
-                disabled={!newItem.title.trim()}
+                disabled={!newItem.title.trim() || !newItem.link.trim() || !newItem.price}
               >
                 <FontAwesomeIcon icon={faPlus} />
                 Add to Wishlist
               </button>
               
-              {!isFormExpanded && !newItem.link && !newItem.notes && (
+              {!isFormExpanded && !newItem.notes && (
                 <button 
                   type="button"
                   className="btn btn-ghost btn-sm"
                   onClick={() => setIsFormExpanded(true)}
                 >
-                  Add details
+                  Add notes
                 </button>
               )}
             </div>
@@ -182,6 +220,17 @@ const WishlistSection = ({ userId, isOwner = true }) => {
               }}>
                 {items.length} item{items.length !== 1 ? 's' : ''}
               </p>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                color: 'var(--primary)',
+                fontWeight: '600',
+                fontSize: '1.1rem'
+              }}>
+                <span>Total:</span>
+                <span>{formatPrice(calculateTotal())}</span>
+              </div>
             </div>
             
             {items.map(item => (
