@@ -1,25 +1,39 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useEffect, useState } from 'react';
+import Dashboard from './components/Dashboard';
+import LandingPage from './components/LandingPage';
+import { LS_KEYS } from './constants';
+import './styles/App.css';
 
-function App() {
+const App = () => {
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Restore session from localStorage (demo)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEYS.CURRENT_USER);
+      if (raw) setCurrentUser(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleAuth = (user) => setCurrentUser(user);
+
+  const handleSignOut = () => {
+    localStorage.removeItem(LS_KEYS.CURRENT_USER);
+    setCurrentUser(null);
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="app">
+      {!currentUser ? (
+        <LandingPage onAuthenticate={handleAuth} />
+      ) : (
+        <Dashboard currentUser={currentUser} onSignOut={handleSignOut} />
+      )}
     </div>
   );
-}
+};
 
 export default App;
+
