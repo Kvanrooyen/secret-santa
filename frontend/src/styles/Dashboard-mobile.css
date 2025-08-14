@@ -1,0 +1,163 @@
+/* Compact header styles */
+.topbar-compact {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    padding: 0.5rem 0;
+  }
+  
+  .topbar-content-compact {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .brand-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .brand-text-compact h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 0;
+  }
+  
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .welcome-text-desktop {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+  
+  .menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: var(--radius);
+    transition: all 0.2s;
+  }
+  
+  .menu-toggle:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+  }
+  
+  .desktop-only {
+    display: flex;
+  }
+  
+  .mobile-only {
+    display: none;
+  }
+  
+  .mobile-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    z-index: 1000;
+    overflow: hidden;
+  }
+  
+  .menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+  }
+  
+  .mobile-menu-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+  
+  .mobile-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 0.9rem;
+  }
+  
+  .mobile-menu-item:hover {
+    background: var(--surface-hover);
+  }
+  
+  /* ===== Mobile-only dashboard flattening & tabs layout ===== */
+  @media (max-width: 768px) {
+    .welcome-text-desktop { display: none; }
+  
+    .desktop-only { display: none !important; }
+    .mobile-only  { display: block !important; }
+  
+    /* Keep slight padding only in the header so icons/hamburger don't hit edges */
+    .topbar-content,
+    .topbar-content-compact {
+      padding: 0 15px;
+    }
+  
+    /* Make tabs full-bleed and flat on mobile */
+    .tabs {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      padding: 0;
+      margin: 0;
+    }
+  
+    /* Tabs: icon + label side-by-side, no pill corners */
+    .tab {
+      flex-direction: row;
+      gap: 0.4rem;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem;
+      border-radius: 0;
+    }
+  
+    .tab.active {
+      box-shadow: none;
+      border-radius: 0;
+    }
+  
+    .tab-label {
+      display: inline !important;
+      font-size: 0.9rem;
+      line-height: 1;
+    }
+  
+    .brand-text-compact h1 { font-size: 1.4rem; }
+    .topbar-compact { padding: 0.5rem 0; }
+  
+    .tabs { gap: 0.25rem; }
+    .brand-mark { font-size: 1.25rem; }
+  }
+  
