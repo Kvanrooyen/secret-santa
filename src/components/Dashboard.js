@@ -1,24 +1,30 @@
-import React, { useMemo, useState } from 'react';
-import { FAMILY_MEMBERS, IS_DRAW_COMPLETE, DRAW_DATE, CHRISTMAS_DATE, LS_KEYS } from '../constants';
-import CountdownTimer from './CountdownTimer';
-import WishlistSection from './WishlistSection';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faSignOutAlt, 
-  faList, 
-  faGift, 
-  faClock, 
+import React, { useMemo, useState } from "react";
+import {
+  FAMILY_MEMBERS,
+  IS_DRAW_COMPLETE,
+  DRAW_DATE,
+  CHRISTMAS_DATE,
+  LS_KEYS,
+} from "../constants";
+import CountdownTimer from "./CountdownTimer";
+import WishlistSection from "./WishlistSection";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faSignOutAlt,
+  faList,
+  faGift,
+  faClock,
   faLock,
   faUserSecret,
   faHourglassHalf,
   faBars,
-  faTimes
-} from '@fortawesome/free-solid-svg-icons';
-import '../styles/Dashboard-mobile.css';
+  faTimes,
+} from "@fortawesome/free-solid-svg-icons";
+import "../styles/Dashboard-mobile.css";
 
 const loadAssignments = () => {
   try {
-    return JSON.parse(localStorage.getItem(LS_KEYS.ASSIGNMENTS) || '{}');
+    return JSON.parse(localStorage.getItem(LS_KEYS.ASSIGNMENTS) || "{}");
   } catch {
     return {};
   }
@@ -36,15 +42,15 @@ const ensureAssignments = (members) => {
   ids.forEach((id, i) => {
     assignments[id] = ids[(i + 1) % ids.length];
   });
-  
+
   localStorage.setItem(LS_KEYS.ASSIGNMENTS, JSON.stringify(assignments));
   return assignments;
 };
 
 const Dashboard = ({ currentUser, onSignOut }) => {
-  const [activeTab, setActiveTab] = useState('mine');
+  const [activeTab, setActiveTab] = useState("mine");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
+
   const assignments = useMemo(() => ensureAssignments(FAMILY_MEMBERS), []);
   const assignedUserId = IS_DRAW_COMPLETE ? assignments[currentUser.id] : null;
   const assignedUser = assignedUserId ? FAMILY_MEMBERS[assignedUserId] : null;
@@ -73,18 +79,23 @@ const Dashboard = ({ currentUser, onSignOut }) => {
                 <h1>Secret Santa</h1>
               </div>
             </div>
-            
+
             <div className="header-actions">
               {/* Desktop welcome text and sign out */}
-              <span className="welcome-text-desktop">Welcome, {currentUser.name}</span>
-              <button className="btn btn-ghost desktop-only" onClick={handleSignOut}>
+              <span className="welcome-text-desktop">
+                Welcome, {currentUser.name}
+              </span>
+              <button
+                className="btn btn-ghost desktop-only"
+                onClick={handleSignOut}
+              >
                 <FontAwesomeIcon icon={faSignOutAlt} />
                 Sign Out
               </button>
-              
+
               {/* Mobile hamburger menu */}
-              <button 
-                className="menu-toggle mobile-only" 
+              <button
+                className="menu-toggle mobile-only"
                 onClick={toggleMenu}
                 aria-label="Toggle menu"
               >
@@ -114,23 +125,25 @@ const Dashboard = ({ currentUser, onSignOut }) => {
       <main className="container">
         <nav className="tabs">
           <button
-            className={`tab ${activeTab === 'mine' ? 'active' : ''}`}
-            onClick={() => setActiveTab('mine')}
+            className={`tab ${activeTab === "mine" ? "active" : ""}`}
+            onClick={() => setActiveTab("mine")}
           >
             <FontAwesomeIcon icon={faList} />
             <span className="tab-label">My Wishlist</span>
           </button>
           <button
-            className={`tab ${activeTab === 'assigned' ? 'active' : ''}`}
-            onClick={() => setActiveTab('assigned')}
+            className={`tab ${activeTab === "assigned" ? "active" : ""}`}
+            onClick={() => setActiveTab("assigned")}
             disabled={!IS_DRAW_COMPLETE}
           >
             <FontAwesomeIcon icon={IS_DRAW_COMPLETE ? faGift : faLock} />
-            <span className="tab-label">{IS_DRAW_COMPLETE ? 'Assignment' : 'Locked'}</span>
+            <span className="tab-label">
+              {IS_DRAW_COMPLETE ? "Assignment" : "Locked"}
+            </span>
           </button>
           <button
-            className={`tab ${activeTab === 'countdowns' ? 'active' : ''}`}
-            onClick={() => setActiveTab('countdowns')}
+            className={`tab ${activeTab === "countdowns" ? "active" : ""}`}
+            onClick={() => setActiveTab("countdowns")}
           >
             <FontAwesomeIcon icon={faClock} />
             <span className="tab-label">Countdowns</span>
@@ -138,11 +151,11 @@ const Dashboard = ({ currentUser, onSignOut }) => {
         </nav>
 
         <div className="main-content">
-          {activeTab === 'mine' && (
-            <WishlistSection userId={currentUser.id} isOwner={true} />
+          {activeTab === "mine" && (
+            <WishlistSection user={currentUser} isOwner={true} />
           )}
 
-          {activeTab === 'assigned' && (
+          {activeTab === "assigned" && (
             <div className="grid-2">
               {!assignedUser ? (
                 <div className="card">
@@ -156,7 +169,10 @@ const Dashboard = ({ currentUser, onSignOut }) => {
                     <div className="empty-icon">
                       <FontAwesomeIcon icon={faHourglassHalf} />
                     </div>
-                    <p>Your secret assignment will be revealed after the draw on December 10th!</p>
+                    <p>
+                      Your secret assignment will be revealed after the draw on
+                      December 10th!
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -168,48 +184,61 @@ const Dashboard = ({ currentUser, onSignOut }) => {
                       </div>
                       <h3 className="card-title">Your Secret Assignment</h3>
                     </div>
-                    <div className="text-center" style={{ padding: '2rem 0' }}>
-                      <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎯</div>
-                      <p style={{ fontSize: '1.2rem', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+                    <div className="text-center" style={{ padding: "2rem 0" }}>
+                      <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>
+                        🎯
+                      </div>
+                      <p
+                        style={{
+                          fontSize: "1.2rem",
+                          marginBottom: "0.5rem",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
                         You're buying for:
                       </p>
-                      <h2 style={{ 
-                        color: 'var(--primary)', 
-                        fontSize: '2rem', 
-                        fontWeight: '800',
-                        margin: '0.5rem 0' 
-                      }}>
+                      <h2
+                        style={{
+                          color: "var(--primary)",
+                          fontSize: "2rem",
+                          fontWeight: "800",
+                          margin: "0.5rem 0",
+                        }}
+                      >
                         {assignedUser.name}
                       </h2>
-                      <p style={{ color: 'var(--text-muted)', marginTop: '1rem' }}>
+                      <p
+                        style={{
+                          color: "var(--text-muted)",
+                          marginTop: "1rem",
+                        }}
+                      >
                         🤫 Keep it secret until Christmas!
                       </p>
                     </div>
                   </div>
-                  <WishlistSection userId={assignedUser.id} isOwner={false} />
+                  <WishlistSection user={assignedUser} isOwner={false} />
                 </>
               )}
             </div>
           )}
 
-          {activeTab === 'countdowns' && (
+          {activeTab === "countdowns" && (
             <div className="grid-2">
-              <CountdownTimer 
-                targetDate={DRAW_DATE} 
-                label="Secret Draw" 
+              <CountdownTimer
+                targetDate={DRAW_DATE}
+                label="Secret Draw"
                 variant="draw"
               />
-              <CountdownTimer 
-                targetDate={CHRISTMAS_DATE} 
-                label="Christmas Day" 
+              <CountdownTimer
+                targetDate={CHRISTMAS_DATE}
+                label="Christmas Day"
                 variant="christmas"
               />
             </div>
           )}
         </div>
       </main>
-
-
     </div>
   );
 };
