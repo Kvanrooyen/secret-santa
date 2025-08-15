@@ -1,123 +1,125 @@
-import React, { useEffect, useState, useCallback } from "react";
-import WishlistItem from "./WishlistItem";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faPlus,
-  faListCheck,
-  faGift,
-  faEuroSign,
-} from "@fortawesome/free-solid-svg-icons";
-import {
-  saveWishlistItem,
-  getMyWishlist,
-  updateWishlistItem,
-  deleteWishlistItem,
-  getGifteeWishlist,
-} from "../utils/wishlistService";
+import React, { useEffect, useMemo, useState } from 'react';
+import { saveWishlistItem, updateWishlistItem, deleteWishlistItem, getMyWishlist } from '../utils/wishlistService';
+import WishlistItem from './WishlistItem';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPlus, faListCheck, faGift, faEuroSign } from '@fortawesome/free-solid-svg-icons';
 
-const WishlistSection = ({ user, isOwner = true }) => {
+const WishlistSection = ({ userId, userEmail, isOwner = true }) => {
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Form state
   const [newItem, setNewItem] = useState({
-    title: "",
-    link: "",
-    price: "",
-    notes: "",
+    title: '',
+    link: '',
+    price: '',
+    notes: ''
   });
+
   const [isFormExpanded, setIsFormExpanded] = useState(false);
 
-  // Load wishlist when component mounts or user changes
-  const loadWishlist = useCallback(async () => {
-    if (!user) return;
+  // Create user object for encryption service
+  const user = useMemo(() => {
+    if (!userId || !userEmail) return null;
+    return { id: userId, email: userEmail };
+  }, [userId, userEmail]);
 
-    setLoading(true);
-    try {
-      let data, error;
+  const canSubmit = useMemo(() => {
+    return Boolean(user && newItem.title.trim());
+  }, [user, newItem.title]);
 
-      if (isOwner) {
-        // Load my own wishlist
-        ({ data, error } = await getMyWishlist(user));
-      } else {
-        // Load giftee's wishlist (for secret santa assignment)
-        ({ data, error } = await getGifteeWishlist(user.id));
-      }
-
-      if (error) {
-        console.error("Error loading wishlist:", error);
-        setItems([]);
-      } else {
-        setItems(data || []);
-      }
-    } catch (err) {
-      console.error("Unexpected error loading wishlist:", err);
-      setItems([]);
-    }
-    setLoading(false);
-  }, [user, isOwner]);
-
+  // Fetch items for this user
   useEffect(() => {
-    if (user) {
-      loadWishlist();
-    }
-  }, [user, loadWishlist]);
+    let active = true;
 
-  const addItem = async () => {
-    if (!newItem.title.trim() || !newItem.link.trim() || !newItem.price) return;
-
-    try {
-      const { error } = await saveWishlistItem(
-        {
-          title: newItem.title,
-          link: newItem.link,
-          price: parseFloat(newItem.price) || 0,
-          notes: newItem.notes,
-        },
-        user
-      );
-
-      if (error) {
-        console.error("Error saving item:", error);
+    async function load() {
+      if (!user) {
+        setItems([]);
+        setError(null);
+        setLoading(false);
         return;
       }
 
-      // Refresh the list
-      await loadWishlist();
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { data, error: fetchError } = await getMyWishlist(user);
+
+        if (!active) return;
+        if (fetchError) throw new Error(fetchError);
+
+        setItems(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!active) return;
+        setError(e?.message || 'Failed to load wishlist.');
+        setItems([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    load();
+    return () => { active = false; };
+  }, [user]);
+
+  // Add item
+  const addItem = async () => {
+    if (!canSubmit || !newItem.title.trim() || !newItem.link.trim() || !newItem.price) return;
+
+    try {
+      setError(null);
+
+      const { error: saveError } = await saveWishlistItem(newItem, user);
+
+      if (saveError) throw new Error(saveError.message || 'Failed to save item');
+
+      // Reload the list to get the new item with proper ID and timestamps
+      const { data, error: fetchError } = await getMyWishlist(user);
+      if (fetchError) throw new Error(fetchError);
+
+      setItems(Array.isArray(data) ? data : []);
 
       // Reset form
-      setNewItem({ title: "", link: "", price: "", notes: "" });
+      setNewItem({ title: '', link: '', price: '', notes: '' });
       setIsFormExpanded(false);
-    } catch (err) {
-      console.error("Unexpected error saving item:", err);
+    } catch (e) {
+      setError(e?.message || 'Failed to add item.');
     }
   };
 
-  const updateItem = async (itemId, updatedData) => {
+  // Update item
+  const updateItem = async (id, updatedData) => {
     try {
-      const { error } = await updateWishlistItem(itemId, updatedData, user);
-      if (error) {
-        console.error("Error updating item:", error);
-        return;
-      }
+      setError(null);
 
-      // Refresh the list
-      await loadWishlist();
-    } catch (err) {
-      console.error("Unexpected error updating item:", err);
+      const { error: updateError } = await updateWishlistItem(id, updatedData, user);
+
+      if (updateError) throw new Error(updateError.message || 'Failed to update item');
+
+      // Update local state
+      setItems(prev => prev.map(item =>
+        item.id === id ? { ...item, ...updatedData } : item
+      ));
+    } catch (e) {
+      setError(e?.message || 'Failed to update item.');
     }
   };
 
-  const deleteItem = async (itemId) => {
+  // Delete item
+  const deleteItem = async (id) => {
     try {
-      const { error } = await deleteWishlistItem(itemId, user.id);
-      if (error) {
-        console.error("Error deleting item:", error);
-        return;
-      }
+      setError(null);
 
-      // Refresh the list
-      await loadWishlist();
-    } catch (err) {
-      console.error("Unexpected error deleting item:", err);
+      const { error: deleteError } = await deleteWishlistItem(id, userId);
+
+      if (deleteError) throw new Error(deleteError.message || 'Failed to delete item');
+
+      // Update local state
+      setItems(prev => prev.filter(item => item.id !== id));
+    } catch (e) {
+      setError(e?.message || 'Failed to delete item.');
     }
   };
 
@@ -127,15 +129,12 @@ const WishlistSection = ({ user, isOwner = true }) => {
   };
 
   const calculateTotal = () => {
-    return items.reduce(
-      (total, item) => total + (parseFloat(item.price) || 0),
-      0
-    );
+    return items.reduce((total, item) => total + (parseFloat(item.price) || 0), 0);
   };
 
   const formatPrice = (price) => {
     const num = parseFloat(price);
-    return isNaN(num) ? "€0.00" : `€${num.toFixed(2)}`;
+    return isNaN(num) ? '€0.00' : `€${num.toFixed(2)}`;
   };
 
   if (loading) {
@@ -145,7 +144,14 @@ const WishlistSection = ({ user, isOwner = true }) => {
           <div className="card-icon">
             <FontAwesomeIcon icon={faListCheck} />
           </div>
-          <h3 className="card-title">Loading wishlist...</h3>
+          <h3 className="card-title">
+            {isOwner ? 'My Wishlist' : "Recipient's Wishlist"}
+          </h3>
+        </div>
+        <div className="wishlist-items">
+          <div className="skeleton skeleton--md" />
+          <div className="skeleton skeleton--md" />
+          <div className="skeleton skeleton--md" />
         </div>
       </div>
     );
@@ -158,23 +164,24 @@ const WishlistSection = ({ user, isOwner = true }) => {
           <FontAwesomeIcon icon={faListCheck} />
         </div>
         <h3 className="card-title">
-          {isOwner ? "My Wishlist" : `${user.name}'s Wishlist`}
+          {isOwner ? 'My Wishlist' : "Recipient's Wishlist"}
         </h3>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="alert alert--error" role="alert" style={{ margin: '1rem' }}>
+          {error}
+        </div>
+      )}
+
       {isOwner && (
         <div className="wishlist-form">
-          <div className="form-header" style={{ marginBottom: "1rem" }}>
-            <h4 style={{ margin: 0, color: "var(--text-primary)" }}>
+          <div className="form-header" style={{ marginBottom: '1rem' }}>
+            <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>
               Add New Item
             </h4>
-            <p
-              style={{
-                margin: "0.25rem 0 0 0",
-                color: "var(--text-muted)",
-                fontSize: "0.9rem",
-              }}
-            >
+            <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
               What would you like for Christmas?
             </p>
           </div>
@@ -185,9 +192,7 @@ const WishlistSection = ({ user, isOwner = true }) => {
                 className="form-input"
                 placeholder="Item title (e.g., 'Cozy winter sweater')"
                 value={newItem.title}
-                onChange={(e) =>
-                  setNewItem({ ...newItem, title: e.target.value })
-                }
+                onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
                 required
               />
             </div>
@@ -198,28 +203,23 @@ const WishlistSection = ({ user, isOwner = true }) => {
                 placeholder="Link to product"
                 type="url"
                 value={newItem.link}
-                onChange={(e) =>
-                  setNewItem({ ...newItem, link: e.target.value })
-                }
+                onChange={(e) => setNewItem({ ...newItem, link: e.target.value })}
                 required
               />
             </div>
 
             <div className="form-row">
-              <div
-                className="price-input-container"
-                style={{ position: "relative" }}
-              >
-                <FontAwesomeIcon
-                  icon={faEuroSign}
-                  style={{
-                    position: "absolute",
-                    left: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--text-muted)",
-                    fontSize: "0.9rem",
-                  }}
+              <div className="price-input-container" style={{ position: 'relative' }}>
+                <FontAwesomeIcon 
+                  icon={faEuroSign} 
+                  style={{ 
+                    position: 'absolute', 
+                    left: '12px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    color: 'var(--text-muted)',
+                    fontSize: '0.9rem'
+                  }} 
                 />
                 <input
                   className="form-input"
@@ -228,10 +228,8 @@ const WishlistSection = ({ user, isOwner = true }) => {
                   step="0.01"
                   min="0"
                   value={newItem.price}
-                  onChange={(e) =>
-                    setNewItem({ ...newItem, price: e.target.value })
-                  }
-                  style={{ paddingLeft: "32px" }}
+                  onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+                  style={{ paddingLeft: '32px' }}
                   required
                 />
               </div>
@@ -243,33 +241,24 @@ const WishlistSection = ({ user, isOwner = true }) => {
                   className="form-input textarea"
                   placeholder="Additional notes (size, color, specific brand, where to find it...)"
                   value={newItem.notes}
-                  onChange={(e) =>
-                    setNewItem({ ...newItem, notes: e.target.value })
-                  }
+                  onChange={(e) => setNewItem({ ...newItem, notes: e.target.value })}
                   rows="3"
                 />
               </div>
             )}
 
-            <div
-              className="form-actions"
-              style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
-            >
-              <button
+            <div className="form-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button 
                 type="submit"
-                className="btn btn-primary"
-                disabled={
-                  !newItem.title.trim() ||
-                  !newItem.link.trim() ||
-                  !newItem.price
-                }
+                className="btn btn-primary" 
+                disabled={!newItem.title.trim() || !newItem.link.trim() || !newItem.price}
               >
                 <FontAwesomeIcon icon={faPlus} />
                 Add to Wishlist
               </button>
-
+              
               {!isFormExpanded && !newItem.notes && (
-                <button
+                <button 
                   type="button"
                   className="btn btn-ghost btn-sm"
                   onClick={() => setIsFormExpanded(true)}
@@ -289,49 +278,43 @@ const WishlistSection = ({ user, isOwner = true }) => {
               <FontAwesomeIcon icon={faGift} />
             </div>
             <p>
-              {isOwner
-                ? "Your wishlist is empty. Add some items above!"
-                : `${user.name} hasn't added any items yet.`}
+              {isOwner 
+                ? "Your wishlist is empty. Add some items above!" 
+                : "No items in their wishlist yet."
+              }
             </p>
           </div>
         ) : (
           <>
-            <div
-              className="items-header"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "1rem",
-                paddingBottom: "0.5rem",
-                borderBottom: "1px solid var(--border)",
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                  color: "var(--text-muted)",
-                  fontSize: "0.9rem",
-                }}
-              >
-                {items.length} item{items.length !== 1 ? "s" : ""}
+            <div className="items-header" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              marginBottom: '1rem',
+              paddingBottom: '0.5rem',
+              borderBottom: '1px solid var(--border)'
+            }}>
+              <p style={{ 
+                margin: 0, 
+                color: 'var(--text-muted)', 
+                fontSize: '0.9rem' 
+              }}>
+                {items.length} item{items.length !== 1 ? 's' : ''}
               </p>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  color: "var(--primary)",
-                  fontWeight: "600",
-                  fontSize: "1.1rem",
-                }}
-              >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                color: 'var(--primary)',
+                fontWeight: '600',
+                fontSize: '1.1rem'
+              }}>
                 <span>Total:</span>
                 <span>{formatPrice(calculateTotal())}</span>
               </div>
             </div>
-
-            {items.map((item) => (
+            
+            {items.map(item => (
               <WishlistItem
                 key={item.id}
                 item={item}

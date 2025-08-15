@@ -1,45 +1,72 @@
-import React, { useMemo, useState } from 'react';
-import { FAMILY_MEMBERS, LS_KEYS } from '../constants';
+// src/components/LandingPage.js
+import React, { useEffect, useMemo, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope, faPaperPlane, faSpinner, faShieldAlt } from '@fortawesome/free-solid-svg-icons';
 
+import { fetchAllowedUsersPublic } from '../utils/users';
+import { signInWithMagicLink } from '../utils/supabase'; // see note below
+
 const LandingPage = ({ onAuthenticate }) => {
-  const members = useMemo(() => Object.values(FAMILY_MEMBERS), []);
+  const [members, setMembers] = useState([]);               // [{id, name, email}]
   const [selectedEmail, setSelectedEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);        // sending magic link
+  const [error, setError] = useState(null);
+  const [sentTo, setSentTo] = useState(null);               // {email, name?}
+
+  // Load dropdown list publicly from Supabase view
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setListLoading(true);
+      setError(null);
+      try {
+        const rows = await fetchAllowedUsersPublic();
+        if (!active) return;
+        setMembers(rows || []);
+        // Preselect first member (optional)
+        if (rows?.length) setSelectedEmail(rows[0].email);
+      } catch (e) {
+        if (!active) return;
+        setError('Could not load the family list. Please refresh.');
+      } finally {
+        if (active) setListLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  const selectedMember = useMemo(
+    () => members.find(m => m.email === selectedEmail) || null,
+    [members, selectedEmail]
+  );
 
   const handleMagicLink = async (e) => {
     e.preventDefault();
-    
     if (!selectedEmail.trim()) return;
-    
+
     setIsLoading(true);
-    
-    // Simulate magic link sending delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // For demo purposes, find user by email and authenticate immediately
-    // In production, this would just send the magic link
-    const user = Object.values(FAMILY_MEMBERS).find(m => m.email === selectedEmail);
-    if (user) {
-      localStorage.setItem(LS_KEYS.CURRENT_USER, JSON.stringify(user));
-      onAuthenticate(user);
+    setError(null);
+    setSentTo(null);
+    try {
+      const { error: authErr } = await signInWithMagicLink(selectedEmail);
+      if (authErr) throw authErr;
+      setSentTo({ email: selectedEmail, name: selectedMember?.name });
+    } catch (e) {
+      setError(e?.message || 'Failed to send magic link. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   return (
     <div className="landing">
       <div className="landing-content">
+        {/* Keep your original header/hero markup intact */}
         <div className="hero-brand">
-          <div className="brand-icon">
-            🎄
-          </div>
+          <div className="brand-icon">🎄</div>
           <h1 className="hero-title">Secret Santa</h1>
-          <p className="hero-subtitle">
-            Your private family gift exchange, made simple and magical
-          </p>
+          <p className="hero-subtitle">Pick your name, then we’ll email you a magic link.</p>
         </div>
 
         <form className="auth-form" onSubmit={handleMagicLink}>
@@ -48,39 +75,56 @@ const LandingPage = ({ onAuthenticate }) => {
               <FontAwesomeIcon icon={faEnvelope} />
               Your Family Email
             </label>
-            <select 
-              className="form-select"
-              value={selectedEmail}
-              onChange={(e) => setSelectedEmail(e.target.value)}
-              required
-              disabled={isLoading}
-            >
-              <option value="">Choose your email address...</option>
-              {members.map(member => (
-                <option key={member.id} value={member.email}>
-                  {member.email} ({member.name})
-                </option>
-              ))}
-            </select>
+
+            {listLoading ? (
+              <div className="inline-status">
+                <FontAwesomeIcon icon={faSpinner} spin /> Loading family list…
+              </div>
+            ) : (
+              <select
+                className="form-select"
+                value={selectedEmail}
+                onChange={(e) => setSelectedEmail(e.target.value)}
+                required
+                disabled={isLoading || !members.length}
+              >
+                {!members.length ? (
+                  <option value="">No names available</option>
+                ) : (
+                  members.map(member => (
+                    <option key={member.id} value={member.email}>
+                      {member.email} ({member.name})
+                    </option>
+                  ))
+                )}
+              </select>
+            )}
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="btn btn-primary btn-wide"
-            disabled={isLoading || !selectedEmail.trim()}
+            disabled={isLoading || listLoading || !selectedEmail.trim()}
           >
             {isLoading ? (
               <>
-                <FontAwesomeIcon icon={faSpinner} spin />
-                Sending Magic Link...
+                <FontAwesomeIcon icon={faSpinner} spin /> Sending…
               </>
             ) : (
               <>
-                <FontAwesomeIcon icon={faPaperPlane} />
-                Send Magic Link
+                <FontAwesomeIcon icon={faPaperPlane} /> Send magic link
               </>
             )}
           </button>
+
+          {sentTo && (
+            <div className="success-note" style={{ marginTop: '1rem' }}>
+              Magic link sent to <strong>{sentTo.email}</strong>.
+              Open it on this device to view your profile.
+            </div>
+          )}
+
+          {error && <div className="error-note">{error}</div>}
         </form>
 
         <div className="privacy-note">

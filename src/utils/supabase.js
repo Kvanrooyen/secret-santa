@@ -40,7 +40,7 @@ export const signInWithMagicLink = async (email) => {
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: window.location.origin,
+      emailRedirectTo: `${window.location.origin}/dashboard`,
     },
   });
 
