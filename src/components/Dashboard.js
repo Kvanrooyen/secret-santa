@@ -1,59 +1,119 @@
-import React, { useMemo, useState } from 'react';
-import { FAMILY_MEMBERS, IS_DRAW_COMPLETE, DRAW_DATE, CHRISTMAS_DATE, LS_KEYS } from '../constants';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../utils/supabase';
 import CountdownTimer from './CountdownTimer';
 import WishlistSection from './WishlistSection';
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faSignOutAlt, 
-  faList, 
-  faGift, 
-  faClock, 
+import {
+  faList,
+  faGift,
+  faClock,
   faLock,
   faUserSecret,
   faHourglassHalf,
   faBars,
-  faTimes
+  faTimes,
 } from '@fortawesome/free-solid-svg-icons';
+
 import '../styles/Dashboard-mobile.css';
 
-const loadAssignments = () => {
-  try {
-    return JSON.parse(localStorage.getItem(LS_KEYS.ASSIGNMENTS) || '{}');
-  } catch {
-    return {};
-  }
-};
+// Set your real draw date/time in UTC
+const DRAW_DATE_UTC = '2025-08-14T18:00:00Z';
+const CHRISTMAS_DATE = '2025-12-25T00:00:00Z';
 
-// For demo purposes: create stable assignments when draw is complete
-const ensureAssignments = (members) => {
-  const existing = loadAssignments();
-  const ids = Object.keys(members);
-  if (!IS_DRAW_COMPLETE) return existing;
-  if (Object.keys(existing).length === ids.length) return existing;
+// Check if draw is complete (you can make this dynamic later)
+const IS_DRAW_COMPLETE = new Date() >= new Date(DRAW_DATE_UTC);
 
-  // Round-robin assignment (buyer -> recipient)
-  const assignments = {};
-  ids.forEach((id, i) => {
-    assignments[id] = ids[(i + 1) % ids.length];
-  });
-  
-  localStorage.setItem(LS_KEYS.ASSIGNMENTS, JSON.stringify(assignments));
-  return assignments;
-};
+export default function Dashboard({ session }) {
+  // Auth & Profile State
+  const [user, setUser] = useState(() => session?.user ?? null);
+  const [profile, setProfile] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(() => !session?.user);
+  const [error, setError] = useState(null);
 
-const Dashboard = ({ currentUser, onSignOut }) => {
+  // UI State (from old Dashboard)
   const [activeTab, setActiveTab] = useState('mine');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
-  const assignments = useMemo(() => ensureAssignments(FAMILY_MEMBERS), []);
-  const assignedUserId = IS_DRAW_COMPLETE ? assignments[currentUser.id] : null;
-  const assignedUser = assignedUserId ? FAMILY_MEMBERS[assignedUserId] : null;
 
-  const handleSignOut = () => {
-    localStorage.removeItem(LS_KEYS.CURRENT_USER);
-    onSignOut();
-  };
+  // Assignment state (you'll need to implement this with Supabase later)
+  const [assignedUser] = useState(null);
 
+  // Ensure we have a Supabase user (magic-link handshake)
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      try {
+        setError(null);
+
+        if (session?.user) {
+          setUser(session.user);
+          setLoadingUser(false);
+          return;
+        }
+
+        setLoadingUser(true);
+        const { data } = await supabase.auth.getUser();
+        if (!active) return;
+        setUser(data?.user ?? null);
+      } catch (e) {
+        if (!active) return;
+        setError(e?.message || 'Failed to read current user.');
+      } finally {
+        if (active) setLoadingUser(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [session?.user]);
+
+  // Load this user's profile
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      if (!user?.id) {
+        setProfile(null);
+        return;
+      }
+
+      try {
+        setError(null);
+
+        const { data, error: selErr } = await supabase
+          .from('profiles')
+          .select('id, name, email')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (!active) return;
+        if (selErr) throw selErr;
+
+        setProfile(data || null);
+      } catch (e) {
+        if (!active) return;
+        setError(e?.message || 'Failed to load profile.');
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
+  // Derived display values
+  const displayName =
+    (profile?.name && profile.name.trim()) ||
+    (user?.user_metadata?.name && String(user.user_metadata.name).trim()) ||
+    user?.email ||
+    '';
+
+  const userId = user?.id || null;
+  const userEmail = profile?.email || user?.email || null;
+
+  // Menu handlers from old Dashboard
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
@@ -62,8 +122,32 @@ const Dashboard = ({ currentUser, onSignOut }) => {
     setIsMenuOpen(false);
   };
 
+  // Loading skeleton while we confirm auth
+  if (loadingUser) {
+    return (
+      <div className="dashboard">
+        <div className="container">
+          <div className="skeleton skeleton--xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="dashboard">
+        <div className="container">
+          <div className="alert alert--error" role="alert">
+            You're not signed in. Please return to the homepage and request a magic link.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard">
+      {/* Header from old Dashboard but with new data */}
       <header className="topbar-compact">
         <div className="container">
           <div className="topbar-content-compact">
@@ -75,12 +159,14 @@ const Dashboard = ({ currentUser, onSignOut }) => {
             </div>
             
             <div className="header-actions">
-              {/* Desktop welcome text and sign out */}
-              <span className="welcome-text-desktop">Welcome, {currentUser.name}</span>
-              <button className="btn btn-ghost desktop-only" onClick={handleSignOut}>
-                <FontAwesomeIcon icon={faSignOutAlt} />
-                Sign Out
-              </button>
+              {/* Desktop welcome text */}
+              <span className="welcome-text-desktop">Welcome, {displayName}</span>
+              
+              {/* Note: Sign out disabled per your product choice */}
+              <span className="btn btn-ghost desktop-only" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                <FontAwesomeIcon icon={faLock} />
+                Secure Session
+              </span>
               
               {/* Mobile hamburger menu */}
               <button 
@@ -99,12 +185,12 @@ const Dashboard = ({ currentUser, onSignOut }) => {
               <div className="menu-overlay" onClick={closeMenu}></div>
               <div className="mobile-menu">
                 <div className="mobile-menu-header">
-                  <span>Welcome, {currentUser.name}!</span>
+                  <span>Welcome, {displayName}!</span>
                 </div>
-                <button className="mobile-menu-item" onClick={handleSignOut}>
-                  <FontAwesomeIcon icon={faSignOutAlt} />
-                  Sign Out
-                </button>
+                <div className="mobile-menu-item" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                  <FontAwesomeIcon icon={faLock} />
+                  Secure Session
+                </div>
               </div>
             </>
           )}
@@ -112,6 +198,14 @@ const Dashboard = ({ currentUser, onSignOut }) => {
       </header>
 
       <main className="container">
+        {/* Error banner */}
+        {error && (
+          <div className="alert alert--error" role="alert" style={{ marginBottom: '1rem' }}>
+            {error}
+          </div>
+        )}
+
+        {/* Tabs from old Dashboard */}
         <nav className="tabs">
           <button
             className={`tab ${activeTab === 'mine' ? 'active' : ''}`}
@@ -139,7 +233,11 @@ const Dashboard = ({ currentUser, onSignOut }) => {
 
         <div className="main-content">
           {activeTab === 'mine' && (
-            <WishlistSection userId={currentUser.id} isOwner={true} />
+            <WishlistSection 
+              userId={userId} 
+              userEmail={userEmail} 
+              isOwner={true} 
+            />
           )}
 
           {activeTab === 'assigned' && (
@@ -156,7 +254,7 @@ const Dashboard = ({ currentUser, onSignOut }) => {
                     <div className="empty-icon">
                       <FontAwesomeIcon icon={faHourglassHalf} />
                     </div>
-                    <p>Your secret assignment will be revealed after the draw on December 10th!</p>
+                    <p>Your secret assignment will be revealed after the draw on December 15th!</p>
                   </div>
                 </div>
               ) : (
@@ -186,7 +284,11 @@ const Dashboard = ({ currentUser, onSignOut }) => {
                       </p>
                     </div>
                   </div>
-                  <WishlistSection userId={assignedUser.id} isOwner={false} />
+                  <WishlistSection 
+                    userId={assignedUser.id} 
+                    userEmail={assignedUser.email}
+                    isOwner={false} 
+                  />
                 </>
               )}
             </div>
@@ -195,7 +297,7 @@ const Dashboard = ({ currentUser, onSignOut }) => {
           {activeTab === 'countdowns' && (
             <div className="grid-2">
               <CountdownTimer 
-                targetDate={DRAW_DATE} 
+                targetDate={DRAW_DATE_UTC} 
                 label="Secret Draw" 
                 variant="draw"
               />
@@ -208,10 +310,6 @@ const Dashboard = ({ currentUser, onSignOut }) => {
           )}
         </div>
       </main>
-
-
     </div>
   );
-};
-
-export default Dashboard;
+}

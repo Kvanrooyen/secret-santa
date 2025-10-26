@@ -1,25 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { saveWishlistItem, updateWishlistItem, deleteWishlistItem, getMyWishlist } from '../utils/wishlistService';
 import WishlistItem from './WishlistItem';
-import { LS_KEYS } from '../constants';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faListCheck, faGift, faEuroSign } from '@fortawesome/free-solid-svg-icons';
 
-const loadAllWishlists = () => {
-  try {
-    return JSON.parse(localStorage.getItem(LS_KEYS.WISHLISTS) || '{}');
-  } catch {
-    return {};
-  }
-};
+const WishlistSection = ({ userId, userEmail, isOwner = true }) => {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-const saveAllWishlists = (wishlists) => {
-  localStorage.setItem(LS_KEYS.WISHLISTS, JSON.stringify(wishlists));
-};
-
-const WishlistSection = ({ userId, isOwner = true }) => {
-  const [allWishlists, setAllWishlists] = useState(loadAllWishlists());
-  const items = useMemo(() => allWishlists[userId] || [], [allWishlists, userId]);
-
+  // Form state
   const [newItem, setNewItem] = useState({
     title: '',
     link: '',
@@ -29,44 +19,108 @@ const WishlistSection = ({ userId, isOwner = true }) => {
 
   const [isFormExpanded, setIsFormExpanded] = useState(false);
 
+  // Create user object for encryption service
+  const user = useMemo(() => {
+    if (!userId || !userEmail) return null;
+    return { id: userId, email: userEmail };
+  }, [userId, userEmail]);
+
+  const canSubmit = useMemo(() => {
+    return Boolean(user && newItem.title.trim());
+  }, [user, newItem.title]);
+
+  // Fetch items for this user
   useEffect(() => {
-    saveAllWishlists(allWishlists);
-  }, [allWishlists]);
+    let active = true;
 
-  const addItem = () => {
-    if (!newItem.title.trim() || !newItem.link.trim() || !newItem.price) return;
+    async function load() {
+      if (!user) {
+        setItems([]);
+        setError(null);
+        setLoading(false);
+        return;
+      }
 
-    const item = {
-      ...newItem,
-      price: parseFloat(newItem.price) || 0,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString()
-    };
+      setLoading(true);
+      setError(null);
 
-    setAllWishlists(prev => ({
-      ...prev,
-      [userId]: [item, ...(prev[userId] || [])]
-    }));
+      try {
+        const { data, error: fetchError } = await getMyWishlist(user);
 
-    // Reset form
-    setNewItem({ title: '', link: '', price: '', notes: '' });
-    setIsFormExpanded(false);
+        if (!active) return;
+        if (fetchError) throw new Error(fetchError);
+
+        setItems(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!active) return;
+        setError(e?.message || 'Failed to load wishlist.');
+        setItems([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    load();
+    return () => { active = false; };
+  }, [user]);
+
+  // Add item
+  const addItem = async () => {
+    if (!canSubmit || !newItem.title.trim() || !newItem.link.trim() || !newItem.price) return;
+
+    try {
+      setError(null);
+
+      const { error: saveError } = await saveWishlistItem(newItem, user);
+
+      if (saveError) throw new Error(saveError.message || 'Failed to save item');
+
+      // Reload the list to get the new item with proper ID and timestamps
+      const { data, error: fetchError } = await getMyWishlist(user);
+      if (fetchError) throw new Error(fetchError);
+
+      setItems(Array.isArray(data) ? data : []);
+
+      // Reset form
+      setNewItem({ title: '', link: '', price: '', notes: '' });
+      setIsFormExpanded(false);
+    } catch (e) {
+      setError(e?.message || 'Failed to add item.');
+    }
   };
 
-  const updateItem = (id, updatedData) => {
-    setAllWishlists(prev => ({
-      ...prev,
-      [userId]: (prev[userId] || []).map(item =>
+  // Update item
+  const updateItem = async (id, updatedData) => {
+    try {
+      setError(null);
+
+      const { error: updateError } = await updateWishlistItem(id, updatedData, user);
+
+      if (updateError) throw new Error(updateError.message || 'Failed to update item');
+
+      // Update local state
+      setItems(prev => prev.map(item =>
         item.id === id ? { ...item, ...updatedData } : item
-      )
-    }));
+      ));
+    } catch (e) {
+      setError(e?.message || 'Failed to update item.');
+    }
   };
 
-  const deleteItem = (id) => {
-    setAllWishlists(prev => ({
-      ...prev,
-      [userId]: (prev[userId] || []).filter(item => item.id !== id)
-    }));
+  // Delete item
+  const deleteItem = async (id) => {
+    try {
+      setError(null);
+
+      const { error: deleteError } = await deleteWishlistItem(id, userId);
+
+      if (deleteError) throw new Error(deleteError.message || 'Failed to delete item');
+
+      // Update local state
+      setItems(prev => prev.filter(item => item.id !== id));
+    } catch (e) {
+      setError(e?.message || 'Failed to delete item.');
+    }
   };
 
   const handleFormSubmit = (e) => {
@@ -83,6 +137,26 @@ const WishlistSection = ({ userId, isOwner = true }) => {
     return isNaN(num) ? '€0.00' : `€${num.toFixed(2)}`;
   };
 
+  if (loading) {
+    return (
+      <div className="card">
+        <div className="card-header">
+          <div className="card-icon">
+            <FontAwesomeIcon icon={faListCheck} />
+          </div>
+          <h3 className="card-title">
+            {isOwner ? 'My Wishlist' : "Recipient's Wishlist"}
+          </h3>
+        </div>
+        <div className="wishlist-items">
+          <div className="skeleton skeleton--md" />
+          <div className="skeleton skeleton--md" />
+          <div className="skeleton skeleton--md" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="card">
       <div className="card-header">
@@ -93,6 +167,13 @@ const WishlistSection = ({ userId, isOwner = true }) => {
           {isOwner ? 'My Wishlist' : "Recipient's Wishlist"}
         </h3>
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="alert alert--error" role="alert" style={{ margin: '1rem' }}>
+          {error}
+        </div>
+      )}
 
       {isOwner && (
         <div className="wishlist-form">
